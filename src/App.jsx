@@ -6,10 +6,19 @@ function App() {
   const [data, setData] = useState(null)
   const [activityMode, setActivityMode] = useState('jalan')
   const [loading, setLoading] = useState(false)
-  const [time, setTime] = useState(new Date().toLocaleTimeString())
+
+  // WIB 24 jam (bukan PM/AM)
+  const [time, setTime] = useState(
+    new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour12: false })
+  )
+
+  // preview khusus page awal
+  const [preview, setPreview] = useState({})
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date().toLocaleTimeString()), 1000)
+    const timer = setInterval(() => {
+      setTime(new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour12: false }))
+    }, 1000)
     return () => clearInterval(timer)
   }, [])
 
@@ -33,10 +42,10 @@ function App() {
     const currentTime = w?.current?.dt
     const sunrise = w?.current?.sys?.sunrise
     const sunset = w?.current?.sys?.sunset
-    
+
     // Jika data tidak lengkap, return false (assume siang)
     if (!currentTime || !sunrise || !sunset) return false
-    
+
     // Cek apakah waktu sekarang sebelum sunrise ATAU setelah sunset
     return currentTime < sunrise || currentTime > sunset
   }
@@ -66,12 +75,13 @@ function App() {
     return next24h.reduce((max, item) => Math.max(max, item?.pop ?? 0), 0)
   }
 
-  // ---------- FETCH ----------
-  const fetchWeather = async () => {
-    if (!city) return
+  // ---------- FETCH (PAGE 2 MAIN) ----------
+  const fetchWeather = async (cityOverride) => {
+    const q = cityOverride ?? city
+    if (!q) return
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:5000/api/weather-all?city=${encodeURIComponent(city)}`)
+      const res = await fetch(`http://localhost:5000/api/weather-all?city=${encodeURIComponent(q)}`)
       const result = await res.json()
       if (res.ok) setData(result)
       else console.error('API error:', result)
@@ -81,6 +91,29 @@ function App() {
       setLoading(false)
     }
   }
+
+  // ---------- FETCH (PAGE 1 PREVIEW ONLY) ----------
+  const fetchPreview = async (cityName) => {
+    try {
+      const res = await fetch(`http://localhost:5000/api/weather-all?city=${encodeURIComponent(cityName)}`)
+      const result = await res.json()
+      if (res.ok) {
+        setPreview(prev => ({ ...prev, [cityName]: result }))
+      } else {
+        console.error('Preview API error:', result)
+      }
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  // load preview cuma saat page awal (data masih null)
+  useEffect(() => {
+    if (data !== null) return
+    fetchPreview('Jakarta')
+    fetchPreview('Bogor')
+    fetchPreview('Tangerang')
+  }, [data])
 
   // ---------- LOGIC ----------
   const getAIDecision = (w) => {
@@ -206,7 +239,7 @@ function App() {
 
   const forecast3Days = useMemo(() => get3DayForecast(data?.forecast), [data])
 
-  // 2) PEMASANGAN: theme dipakai bareng untuk background + icon
+  // theme untuk background (page 2)
   const theme = data ? getWeatherTheme(data?.current?.weather?.[0]?.main) : 'default'
   const night = data ? isNight(data) : false
   const heroIcon = getWeatherFaIcon(theme, night)
@@ -227,7 +260,7 @@ function App() {
         <div className="search-section glass">
           <input
             type="text"
-            placeholder="Masukkan Kota..."
+            placeholder="Masukan Kota atau wilayah..."
             value={city}
             onChange={(e) => setCity(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && fetchWeather()}
@@ -237,6 +270,50 @@ function App() {
           </button>
         </div>
 
+        {/* PAGE 1: PREVIEW BUBBLES (cuma muncul saat data masih null) */}
+        {!data && (
+          <div className="preview-row">
+            {['Jakarta', 'Bogor', 'Tangerang'].map((cityName) => {
+              const p = preview[cityName]
+              if (!p) return null
+
+              return (
+                <div
+                  key={cityName}
+                  className="preview-card glass"
+                  onClick={() => {
+                    setCity(cityName)
+                    fetchWeather(cityName)
+                  }}
+                >
+                  <h4>{p.current?.name}, ID</h4>
+
+                  <div className="preview-main">
+                    <div className="preview-icon">
+                      <img
+                        src={`https://openweathermap.org/img/wn/${p.current?.weather?.[0]?.icon}.png`}
+                        alt="icon"
+                      />
+                    </div>
+                    <span className="preview-temp">{Math.round(p.current?.main?.temp ?? 0)}°C</span>
+                  </div>
+
+                  <p className="preview-desc">
+                    {(p.current?.weather?.[0]?.description || '-').toUpperCase()}
+                  </p>
+
+                  <div className="preview-meta">
+                    <span className="preview-chip">HUMID {p.current?.main?.humidity ?? '-'}%</span>
+                    <span className="preview-chip">WIND {msToKmh(p.current?.wind?.speed)} km/h</span>
+                    <span className="preview-chip">AQI {aqiLabel(p.aqi)}</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {/* PAGE 2: HASIL SEARCH (tetap sama, kecuali AI card sesuai request lu) */}
         {data && (
           <main className="dashboard-grid">
             {/* LEFT: MAIN BUBBLE */}
@@ -246,7 +323,6 @@ function App() {
               </h2>
 
               <div className="temp-hero">
-                {/* Ikon sekarang ikut theme, bukan awan statis */}
                 <div className={`hero-icon ${theme}`}>
                   <i className={`fa-solid ${heroIcon}`}></i>
                 </div>
@@ -268,14 +344,9 @@ function App() {
             {/* RIGHT: POPUP / SIDE CARDS */}
             <div className="side-column">
               <section className="glass bubble-card ai-engine">
-                <h3><i className="fa-solid fa-brain"></i> AI Decision Engine</h3>
+                <h3>AI Summary</h3>
                 <strong>Rekomendasi: {getAIDecision(data).rec}</strong>
                 <p>Alasan: {getAIDecision(data).reason}</p>
-
-                <div className="best-time-tag">
-                  <i className="fa-solid fa-star"></i> Waktu terbaik hari ini:{' '}
-                  <span>{getBestTime(data.forecast)}</span>
-                </div>
               </section>
 
               <section className="glass bubble-card risk-card">
