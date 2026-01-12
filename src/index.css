@@ -1,0 +1,124 @@
+:root {
+  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+button:hover {
+  border-color: #646cff;
+}
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+  a:hover {
+    color: #747bff;
+  }
+  button {
+    background-color: #f9f9f9;
+  }
+}
+
+
+/* --- APP.CSS FULL PRO --- */
+.app-wrapper {
+  min-height: 100vh; display: flex; justify-content: center; align-items: center; color: white;
+}
+.container { width: 100%; max-width: 1000px; padding: 20px; z-index: 1; }
+
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 24px;
+}
+
+/* SEARCH SECTION */
+.search-section { margin-bottom: 30px; }
+.recent-tags { margin-top: 10px; display: flex; justify-content: center; gap: 10px; }
+.recent-tags span { 
+  background: rgba(255,255,255,0.1); padding: 5px 15px; border-radius: 20px; 
+  cursor: pointer; font-size: 0.8rem; border: 1px solid transparent;
+}
+.recent-tags span:hover { border-color: #ff6b6b; }
+
+/* DASHBOARD GRID SYSTEM */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 20px;
+}
+
+.main-card { grid-row: span 2; padding: 40px; text-align: center; }
+.temp-display { display: flex; align-items: center; justify-content: center; margin: 20px 0; }
+.temp-display h1 { font-size: 5rem; margin: 0; }
+
+.aqi-badge { 
+  display: inline-block; padding: 8px 20px; background: #4ecdc4; 
+  border-radius: 50px; font-weight: 600; margin-top: 20px;
+}
+
+.details-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
+}
+.mini-card { padding: 20px; text-align: center; }
+.mini-card i { font-size: 1.5rem; color: #ff6b6b; margin-bottom: 10px; }
+
+.forecast-box { padding: 20px; }
+.f-list { display: flex; justify-content: space-between; margin-top: 15px; }
+.f-item { text-align: center; padding: 10px; border-radius: 12px; }
+
+/* RESPONSIVE */
+@media (max-width: 850px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+  .main-card { grid-row: auto; }
+}
