@@ -15,9 +15,6 @@ function App() {
   // preview khusus page awal
   const [preview, setPreview] = useState({})
 
-  // ✅ untuk fleksibel:
-  // - di Vercel: kosong -> fetch ke /api/...
-  // - kalau backend lo beda domain: set VITE_API_BASE_URL
   const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 
   useEffect(() => {
