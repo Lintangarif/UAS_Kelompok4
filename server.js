@@ -10,7 +10,7 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-// Jangan pakai VITE_ di backend, bikin env khusus
+// Gunakan nama variabel yang konsisten dengan .env
 const API_KEY = process.env.OPENWEATHER_API_KEY
 
 if (!API_KEY) {
@@ -22,9 +22,9 @@ app.get('/api/weather-all', async (req, res) => {
   if (!city) return res.status(400).json({ message: "Query 'city' wajib diisi" })
 
   try {
-    const q = encodeURIComponent(city)
+    const q = encodeURIComponent(city) // Sanitasi URL untuk nama kota berspasi [cite: 41]
 
-    // 1) Current weather by city name
+    // 1) Ambil data cuaca saat ini berdasarkan nama kota
     const weatherRes = await fetch(
       `https://api.openweathermap.org/data/2.5/weather?q=${q}&units=metric&appid=${API_KEY}&lang=id`
     )
@@ -39,7 +39,7 @@ app.get('/api/weather-all', async (req, res) => {
 
     const { lat, lon } = weatherData.coord
 
-    // 2) Forecast + AQI by coords
+    // 2) Paralel Fetch: Ambil Forecast & AQI sekaligus agar cepat
     const [forecastRes, aqiRes] = await Promise.all([
       fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}&lang=id`),
       fetch(`https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`)
@@ -50,7 +50,7 @@ app.get('/api/weather-all', async (req, res) => {
 
     const forecastList = Array.isArray(forecastData?.list) ? forecastData.list : []
 
-    // Bonus: max chance of rain in next 24 hours (8 items = 24 hours in 3h steps)
+    // Hitung probabilitas hujan tertinggi dalam 24 jam kedepan (8 item forecast)
     const next24h = forecastList.slice(0, 8)
     const popMax24h = next24h.reduce((max, item) => Math.max(max, item?.pop ?? 0), 0)
 
@@ -59,7 +59,7 @@ app.get('/api/weather-all', async (req, res) => {
       forecast: forecastList,
       aqi: aqiData?.list?.[0]?.main?.aqi ?? null,
       meta: {
-        pop_max_24h: popMax24h,  // 0..1
+        pop_max_24h: popMax24h, 
         city_resolved: weatherData?.name ?? city,
         coord: { lat, lon }
       }

@@ -15,6 +15,11 @@ function App() {
   // preview khusus page awal
   const [preview, setPreview] = useState({})
 
+  // ✅ untuk fleksibel:
+  // - di Vercel: kosong -> fetch ke /api/...
+  // - kalau backend lo beda domain: set VITE_API_BASE_URL
+  const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
   useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour12: false }))
@@ -42,15 +47,11 @@ function App() {
     const currentTime = w?.current?.dt
     const sunrise = w?.current?.sys?.sunrise
     const sunset = w?.current?.sys?.sunset
-
-    // Jika data tidak lengkap, return false (assume siang)
     if (!currentTime || !sunrise || !sunset) return false
-
-    // Cek apakah waktu sekarang sebelum sunrise ATAU setelah sunset
     return currentTime < sunrise || currentTime > sunset
   }
 
-  // 2) DETEKSI: theme → icon FontAwesome (TIDAK BERUBAH)
+  // 2) DETEKSI: theme → icon FontAwesome
   const getWeatherFaIcon = (theme, night = false) => {
     if (theme === 'clear') return night ? 'fa-moon' : 'fa-sun'
     if (theme === 'clouds') return 'fa-cloud'
@@ -81,7 +82,7 @@ function App() {
     if (!q) return
     setLoading(true)
     try {
-      const res = await fetch(`http://localhost:5000/api/weather-all?city=${encodeURIComponent(q)}`)
+      const res = await fetch(`${API_BASE}/api/weather-all?city=${encodeURIComponent(q)}`)
       const result = await res.json()
       if (res.ok) setData(result)
       else console.error('API error:', result)
@@ -95,7 +96,7 @@ function App() {
   // ---------- FETCH (PAGE 1 PREVIEW ONLY) ----------
   const fetchPreview = async (cityName) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/weather-all?city=${encodeURIComponent(cityName)}`)
+      const res = await fetch(`${API_BASE}/api/weather-all?city=${encodeURIComponent(cityName)}`)
       const result = await res.json()
       if (res.ok) {
         setPreview(prev => ({ ...prev, [cityName]: result }))
@@ -113,6 +114,7 @@ function App() {
     fetchPreview('Jakarta')
     fetchPreview('Bogor')
     fetchPreview('Tangerang')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
 
   // ---------- LOGIC ----------
@@ -139,33 +141,6 @@ function App() {
       : `Hujan rendah (${rainProb}%), suhu nyaman (${temp}°C), angin ringan (${windKmh} km/h), AQI ${aqiLabel(w?.aqi)}.`
 
     return { rec, reason }
-  }
-
-  const getBestTime = (forecast) => {
-    if (!Array.isArray(forecast) || forecast.length === 0) return '-'
-    const next12h = forecast.slice(0, 4)
-
-    const scored = next12h.map(item => {
-      const pop = item?.pop ?? 0
-      const temp = item?.main?.temp ?? 0
-      const windKmh = msToKmh(item?.wind?.speed ?? 0)
-
-      let score = 0
-      score += pop * 100
-      score += Math.max(0, windKmh - 15)
-      score += (temp <= 10) ? 15 : 0
-      score += (temp >= 33) ? 15 : 0
-      return { item, score }
-    })
-
-    scored.sort((a, b) => a.score - b.score)
-    const best = scored[0]?.item
-    if (!best?.dt_txt) return '-'
-
-    const hour = new Date(best.dt_txt).getHours()
-    const start = hour.toString().padStart(2, '0')
-    const end = (hour + 2).toString().padStart(2, '0')
-    return `${start}:00 - ${end}:00`
   }
 
   const getPacks = (w, mode) => {
@@ -209,10 +184,7 @@ function App() {
     let level = 'Rendah', icon = '🟢', color = '#00e676'
     if (reasons.length >= 1) { level = 'Sedang'; icon = '🟡'; color = '#ffcc00' }
     if (main.includes('thunderstorm') || rainProb >= 80 || windKmh >= 55) { level = 'Tinggi'; icon = '🔴'; color = '#ff5252' }
-
-    if (reasons.length === 0) {
-      level = 'Rendah'; icon = '🟢'; color = '#00e676'
-    }
+    if (reasons.length === 0) { level = 'Rendah'; icon = '🟢'; color = '#00e676' }
 
     return { label: `Risiko ${level}`, icon, color, detail: reasons.length ? reasons.join(' • ') : 'Kondisi relatif aman' }
   }
@@ -313,7 +285,7 @@ function App() {
           </div>
         )}
 
-        {/* PAGE 2: HASIL SEARCH (tetap sama, kecuali AI card sesuai request lu) */}
+        {/* PAGE 2: HASIL SEARCH */}
         {data && (
           <main className="dashboard-grid">
             {/* LEFT: MAIN BUBBLE */}
@@ -336,7 +308,7 @@ function App() {
 
               <div className="meta-row">
                 <span className="chip">HUMID {data.current?.main?.humidity ?? '-'}%</span>
-                <span className="chip">WIND {msToKmh(data.current?.wind?.speed)} km/h</span>
+                <span className="chip">WIND {msToKmh(data.current?.wind?.speed ?? 0)} km/h</span>
                 <span className="chip">AQI {aqiLabel(data.aqi)}</span>
               </div>
             </section>
